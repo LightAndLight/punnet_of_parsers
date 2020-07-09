@@ -49,8 +49,8 @@ parse :: Parser a -> Text -> Either ParseError a
 parse (Parser p) input =
   p input 0 mempty failure success failure success
   where
-    failure = \_ (Pos pos) ex -> Left $ Unexpected pos ex
-    success = \a _ _ _ -> Right a
+    failure _ (Pos pos) ex = Left $ Unexpected pos ex
+    success a _ _ _ = Right a
 
 instance Functor Parser where
   fmap f (Parser p) =
@@ -76,11 +76,12 @@ instance Applicative Parser where
       )
       cFail
       (\f input' pos' ex' ->
+         let cSuccess' = cSuccess . f in
          pa input' pos' ex'
            cFail
-           (cSuccess  . f)
+           cSuccess'
            cFail
-           (cSuccess  . f)
+           cSuccess'
       )
 
 instance Alternative Parser where
@@ -102,10 +103,11 @@ instance Alternative Parser where
 instance Parsing Parser where
   try (Parser p) =
     Parser $ \input pos ex ucFail ucSuccess _ cSuccess ->
+    let ucFail' _ _ _ = ucFail input pos ex in
     p input pos ex
-      (\_ _ _ -> ucFail input pos ex)
+      ucFail'
       ucSuccess
-      (\_ _ _ -> ucFail input pos ex)
+      ucFail'
       cSuccess
   (<?>) (Parser p) n =
     Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
@@ -119,11 +121,15 @@ instance Parsing Parser where
         (\a input' pos' _ -> cSuccess a input' pos' ex')
   notFollowedBy (Parser p) =
     Parser $ \input pos ex ucFail ucSuccess _ _ ->
-    p input pos ex
-      (\_ _ _ -> ucSuccess () input pos ex)
-      (\_ _ _ _ -> ucFail input pos ex)
-      (\_ _ _ -> ucSuccess () input pos ex)
-      (\_ _ _ _ -> ucFail input pos ex)
+    let
+      ucSuccess' _ _ _ = ucSuccess () input pos ex
+      ucFail' _ _ _ _ = ucFail input pos ex
+    in
+      p input pos ex
+        ucSuccess'
+        ucFail'
+        ucSuccess'
+        ucFail'
   unexpected _ = empty
   eof =
     Parser $ \input pos ex ucFail ucSuccess _ _ ->
