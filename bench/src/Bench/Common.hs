@@ -17,14 +17,12 @@ data Expr = Var String | Lam String Expr | App Expr Expr
 
 instance NFData Expr
 
-ident :: CharParsing m => m String
-ident = some (satisfy isLower)
-
 expr :: CharParsing m => m Expr
 expr =
   lam <|>
   app
   where
+    ident = some (satisfy isLower)
     spaces = skipMany (char ' ')
     lam = Lam <$ char '\\' <*> ident <* spaces <* string "->" <* spaces <*> expr
     atom =
@@ -44,6 +42,10 @@ commonBenchs parse benchName =
   [ bgroup "expr"
     [ let
         input = "\\x -> \\y -> x (\\z -> z y) y"
+      in
+        bench (unpack input) $ nf (parse expr) input
+    , let
+        input = "\\x -> \\y -> x (\\z -> z y) y (\\x -> (\\y -> ((x y) z) (\\w -> x y w)))"
       in
         bench (unpack input) $ nf (parse expr) input
     ]

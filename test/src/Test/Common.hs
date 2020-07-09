@@ -4,12 +4,31 @@
 module Test.Common (Label(..), commonTests) where
 
 import Control.Applicative ((<|>), many, some)
+import Data.Char (isLower)
 import Data.Set (Set)
 import Data.Text (Text)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 
-import Text.Parser.Char (CharParsing, char)
-import Text.Parser.Combinators (eof, notFollowedBy, try)
+import Text.Parser.Char (CharParsing, char, satisfy, string)
+import Text.Parser.Combinators (eof, notFollowedBy, skipMany, try)
+
+data Expr = Var String | Lam String Expr | App Expr Expr
+  deriving (Eq, Show)
+
+expr :: CharParsing m => m Expr
+expr =
+  lam <|>
+  app
+  where
+    ident = some (satisfy isLower)
+    spaces = skipMany (char ' ')
+    lam = Lam <$ char '\\' <*> ident <* spaces <* string "->" <* spaces <*> expr
+    atom =
+      (char '(' *> expr <* char ')' <|>
+       Var <$> ident
+      ) <*
+      spaces
+    app = foldl App <$> atom <*> many atom
 
 data Label
   = Eof
@@ -130,6 +149,20 @@ commonTests parse unexpected specName =
         actual = parse p input
         expected = Right 'c'
       actual `shouldBe` expected
+    it "parse (string \"->\") \"->\"" $ do
+      let
+        p = string "->"
+        input = "->"
+        actual = parse p input
+        expected = Right "->"
+      actual `shouldBe` expected
+    it "parse (skipMany (char ' ') *> string \"->\") \" ->\"" $ do
+      let
+        p = skipMany (char ' ') *> string "->"
+        input = " ->"
+        actual = parse p input
+        expected = Right "->"
+      actual `shouldBe` expected
     it "parse eof \"\"" $ do
       let
         p = eof
@@ -185,4 +218,39 @@ commonTests parse unexpected specName =
         input = "aaac"
         actual = parse p input
         expected = Left $ unexpected 3 [Char 'a', Char 'b']
+      actual `shouldBe` expected
+    it "parse expr \"\\x -> \\y -> x (\\z -> z y) y\"" $ do
+      let
+        input = "\\x -> \\y -> x (\\z -> z y) y"
+        actual = parse expr input
+        expected =
+          Right $
+          Lam "x" . Lam "y" $
+          App
+            (App
+               (Var "x")
+               (Lam "z" $ App (Var "z") (Var "y"))
+            )
+            (Var "y")
+      actual `shouldBe` expected
+    it "parse expr \"\\x -> \\y -> x (\\z -> z y) y (\\x -> (\\y -> ((x y) z) (\\w -> x y w)))\"" $ do
+      let
+        input = "\\x -> \\y -> x (\\z -> z y) y (\\x -> (\\y -> ((x y) z) (\\w -> x y w)))"
+        actual = parse expr input
+        expected =
+          Right $
+          Lam "x" . Lam "y" $
+          App
+            (App
+               (App
+                 (Var "x")
+                 (Lam "z" $ App (Var "z") (Var "y"))
+               )
+               (Var "y")
+            )
+            (Lam "x" $ Lam "y" $
+             App
+               (App (App (Var "x") (Var "y")) (Var "z"))
+               (Lam "w" $ App (App (Var "x") (Var "y")) (Var "w"))
+            )
       actual `shouldBe` expected

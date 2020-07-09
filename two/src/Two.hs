@@ -1,3 +1,4 @@
+{-# language BangPatterns #-}
 {-# language DeriveGeneric #-}
 {-# language GeneralizedNewtypeDeriving #-}
 {-# language RankNTypes #-}
@@ -100,12 +101,12 @@ instance Alternative Parser where
 
 instance Parsing Parser where
   try (Parser p) =
-    Parser $ \input pos ex ucFail ucSuccess _ _ ->
+    Parser $ \input pos ex ucFail ucSuccess _ cSuccess ->
     p input pos ex
       (\_ _ _ -> ucFail input pos ex)
-      (\a _ _ _ -> ucSuccess a input pos ex)
+      ucSuccess
       (\_ _ _ -> ucFail input pos ex)
-      (\a _ _ _ -> ucSuccess a input pos ex)
+      cSuccess
   (<?>) (Parser p) n =
     Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
     let
@@ -135,13 +136,15 @@ instance CharParsing Parser where
     Parser $ \input pos ex ucFail _ _ cSuccess ->
     case Text.uncons input of
       Just (c, input') | f c ->
-        cSuccess c input' (pos + 1) mempty
+        let !pos' = pos + 1 in
+        cSuccess c input' pos' mempty
       _ ->
         ucFail input pos ex
   char c =
     Parser $ \input pos ex ucFail _ _ cSuccess ->
     case Text.uncons input of
       Just (c', input') | c == c' ->
-        cSuccess c input' (pos + 1) mempty
+        let !pos' = pos + 1 in
+        cSuccess c input' pos' mempty
       _ ->
         ucFail input pos (Set.insert (Char c) ex)

@@ -131,13 +131,15 @@ instance CharParsing Parser where
     Parser $ \input pos ex ->
     case Text.uncons input of
       Just (c, input') | f c ->
-        (# True, input', pos + 1, mempty, (# | c #) #)
+        let !pos' = pos + 1 in
+        (# True, input', pos', mempty, (# | c #) #)
       _ ->
         (# False, input, pos, ex, (# (# #) | #) #)
   char c =
     Parser $ \input pos ex ->
     case Text.uncons input of
       Just (c', input') | c == c' ->
-        (# True, input', pos + 1, mempty, (# | c #) #)
+        let !pos' = pos + 1 in
+        (# True, input', pos', mempty, (# | c #) #)
       _ ->
         (# False, input, pos, Set.insert (Char c) ex, (# (# #) | #) #)

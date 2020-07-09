@@ -48,9 +48,9 @@ parse (Parser p) input =
 
 instance Functor Parser where
   fmap f (Parser p) =
-    Parser $ \(# input, pos, ex #) ->
+    Parser $ \input ->
     let
-      !(# consumed, input', pos', ex', ra #) = p (# input, pos, ex #)
+      !(# consumed, input', pos', ex', ra #) = p input
     in
       (# consumed
       , input'
@@ -64,9 +64,9 @@ instance Functor Parser where
 instance Applicative Parser where
   pure a = Parser $ \(# input, pos, ex #) -> (# False, input, pos, ex, (# | a #) #)
   Parser pf <*> Parser pa =
-    Parser $ \(# input, pos, ex #) ->
+    Parser $ \input ->
       let
-        !(# fConsumed, input', pos', ex', rf #) = pf (# input, pos, ex #)
+        !(# fConsumed, input', pos', ex', rf #) = pf input
       in
         case rf of
           (# (# #) | #) ->
@@ -129,13 +129,15 @@ instance CharParsing Parser where
     Parser $ \(# input, pos, ex #) ->
     case Text.uncons input of
       Just (c, input') | f c ->
-        (# True, input', pos + 1, mempty, (# | c #) #)
+        let !pos' = pos + 1 in
+        (# True, input', pos', mempty, (# | c #) #)
       _ ->
         (# False, input, pos, ex, (# (# #) | #) #)
   char c =
     Parser $ \(# input, pos, ex #) ->
     case Text.uncons input of
       Just (c', input') | c == c' ->
-        (# True, input', pos + 1, mempty, (# | c #) #)
+        let !pos' = pos + 1 in
+        (# True, input', pos', mempty, (# | c #) #)
       _ ->
         (# False, input, pos, Set.insert (Char c) ex, (# (# #) | #) #)
