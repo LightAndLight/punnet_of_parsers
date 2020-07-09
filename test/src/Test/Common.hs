@@ -219,7 +219,7 @@ commonTests parse unexpected specName =
         actual = parse p input
         expected = Left $ unexpected 3 [Char 'a', Char 'b']
       actual `shouldBe` expected
-    it "parse expr \"\\x -> \\y -> x (\\z -> z y) y\"" $ do
+    it "parse expr \"\\x ->   \\y  -> x     (\\z ->  z  y) y\"" $ do
       let
         input = "\\x -> \\y -> x (\\z -> z y) y"
         actual = parse expr input

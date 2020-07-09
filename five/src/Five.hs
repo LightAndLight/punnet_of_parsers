@@ -109,6 +109,23 @@ instance Parsing Parser where
     case p (# input, pos, ex #) of
       (# consumed, input', pos', _, res #) ->
         (# consumed, input', pos', Set.insert (Name n) ex, res #)
+  skipMany (Parser p) =
+    Parser go
+    where
+      go state =
+        case p state of
+          (# consumed, input', pos', ex', res #) ->
+            case res of
+              (# (# #) | #) ->
+                (# consumed
+                , input'
+                , pos'
+                , ex'
+                , case consumed of
+                    1# -> (# (# #) | #)
+                    _ -> (# | () #)
+                #)
+              (# | _ #) -> go (# input', pos', ex' #)
   notFollowedBy (Parser p) =
     Parser $ \(# input, pos, ex #) ->
     case p (# input, pos, ex #) of

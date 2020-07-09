@@ -103,6 +103,30 @@ instance Parsing Parser where
       (consumed, input', pos', _, res) = p input pos ex
     in
       (consumed, input', pos', Set.insert (Name n) ex, res)
+  skipMany (Parser p) =
+    Parser go
+    where
+      go input pos ex =
+        case p input pos ex of
+          (consumed, input', pos', ex', res) ->
+            case res of
+              Nothing ->
+                if consumed
+                then
+                  ( consumed
+                  , input'
+                  , pos'
+                  , ex'
+                  , Nothing
+                  )
+                else
+                  ( consumed
+                  , input'
+                  , pos'
+                  , ex'
+                  , Just ()
+                  )
+              Just{} -> go input' pos' ex'
   notFollowedBy (Parser p) =
     Parser $ \input pos ex ->
     let

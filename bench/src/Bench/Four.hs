@@ -3,13 +3,17 @@ module Bench.Four (fourBenchs, fourWeighs) where
 import Criterion.Main (Benchmark)
 import Weigh (Weigh)
 
-import Bench.Common (commonBenchs, commonWeighs)
-import Four (parse)
+import Bench.Common (Expr, commonBenchs, commonWeighs)
+import qualified Bench.Common as Common
+import Four (Parser, parse)
+
+expr :: Parser Expr
+expr = Common.expr
 
 fourBenchs :: Benchmark
 fourBenchs =
-  commonBenchs parse "four"
+  commonBenchs (parse expr) "four"
 
 fourWeighs :: Weigh ()
 fourWeighs =
-  commonWeighs parse "four"
+  commonWeighs (parse expr) "four"
