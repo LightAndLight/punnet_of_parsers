@@ -38,9 +38,9 @@ newtype Parser a
       Pos ->
       Set Label ->
       (Text -> Pos -> Set Label -> r) -> -- uncommitted failure
-      (Text -> Pos -> Set Label -> a -> r) -> -- uncommitted success
+      (a -> Text -> Pos -> Set Label -> r) -> -- uncommitted success
       (Text -> Pos -> Set Label -> r) -> -- committed failure
-      (Text -> Pos -> Set Label -> a -> r) -> -- committed success
+      (a -> Text -> Pos -> Set Label -> r) -> -- committed success
       r
   }
 
@@ -49,37 +49,37 @@ parse (Parser p) input =
   p input 0 mempty failure success failure success
   where
     failure = \_ (Pos pos) ex -> Left $ Unexpected pos ex
-    success = \_ _ _ a -> Right a
+    success = \a _ _ _ -> Right a
 
 instance Functor Parser where
   fmap f (Parser p) =
     Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
     p input pos ex
       ucFail
-      (\input' pos' ex' -> ucSuccess input' pos' ex' . f)
+      (ucSuccess . f)
       cFail
-      (\input' pos' ex' -> cSuccess input' pos' ex' . f)
+      (cSuccess . f)
 
 instance Applicative Parser where
-  pure a = Parser $ \input pos ex _ ucSuccess _ _ -> ucSuccess input pos ex a
+  pure a = Parser $ \input pos ex _ ucSuccess _ _ -> ucSuccess a input pos ex
   Parser pf <*> Parser pa =
     Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
     pf input pos ex
       ucFail
-      (\input' pos' ex' f ->
+      (\f input' pos' ex' ->
          pa input' pos' ex'
            ucFail
-           (\input'' pos'' ex'' -> ucSuccess input'' pos'' ex'' . f)
+           (ucSuccess . f)
            cFail
-           (\input'' pos'' ex'' -> cSuccess input'' pos'' ex'' . f)
+           (cSuccess . f)
       )
       cFail
-      (\input' pos' ex' f ->
+      (\f input' pos' ex' ->
          pa input' pos' ex'
            cFail
-           (\input'' pos'' ex'' -> cSuccess input'' pos'' ex'' . f)
+           (cSuccess  . f)
            cFail
-           (\input'' pos'' ex'' -> cSuccess input'' pos'' ex'' . f)
+           (cSuccess  . f)
       )
 
 instance Alternative Parser where
@@ -103,9 +103,9 @@ instance Parsing Parser where
     Parser $ \input pos ex ucFail ucSuccess _ _ ->
     p input pos ex
       (\_ _ _ -> ucFail input pos ex)
-      (\_ _ _ -> ucSuccess input pos ex)
+      (\a _ _ _ -> ucSuccess a input pos ex)
       (\_ _ _ -> ucFail input pos ex)
-      (\_ _ _ -> ucSuccess input pos ex)
+      (\a _ _ _ -> ucSuccess a input pos ex)
   (<?>) (Parser p) n =
     Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
     let
@@ -113,21 +113,21 @@ instance Parsing Parser where
     in
       p input pos ex
         (\input' pos' _ -> ucFail input' pos' ex')
-        (\input' pos' _ a -> ucSuccess input' pos' ex' a)
+        (\a input' pos' _ -> ucSuccess a input' pos' ex')
         (\input' pos' _ -> cFail input' pos' ex')
-        (\input' pos' _ a -> cSuccess input' pos' ex' a)
+        (\a input' pos' _ -> cSuccess a input' pos' ex')
   notFollowedBy (Parser p) =
     Parser $ \input pos ex ucFail ucSuccess _ _ ->
     p input pos ex
-      (\_ _ _ -> ucSuccess input pos ex ())
+      (\_ _ _ -> ucSuccess () input pos ex)
       (\_ _ _ _ -> ucFail input pos ex)
-      (\_ _ _ -> ucSuccess input pos ex ())
+      (\_ _ _ -> ucSuccess () input pos ex)
       (\_ _ _ _ -> ucFail input pos ex)
   unexpected _ = empty
   eof =
     Parser $ \input pos ex ucFail ucSuccess _ _ ->
     if Text.null input
-    then ucSuccess input pos ex ()
+    then ucSuccess () input pos ex
     else ucFail input pos (Set.insert Eof ex)
 
 instance CharParsing Parser where
@@ -135,13 +135,13 @@ instance CharParsing Parser where
     Parser $ \input pos ex ucFail _ _ cSuccess ->
     case Text.uncons input of
       Just (c, input') | f c ->
-        cSuccess input' (pos + 1) mempty c
+        cSuccess c input' (pos + 1) mempty
       _ ->
         ucFail input pos ex
   char c =
     Parser $ \input pos ex ucFail _ _ cSuccess ->
     case Text.uncons input of
       Just (c', input') | c == c' ->
-        cSuccess input' (pos + 1) mempty c
+        cSuccess c input' (pos + 1) mempty
       _ ->
         ucFail input pos (Set.insert (Char c) ex)

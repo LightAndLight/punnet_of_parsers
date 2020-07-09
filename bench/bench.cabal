@@ -21,9 +21,11 @@ benchmark bench
   other-modules:       Bench.Common
                      , Bench.One
                      , Bench.Two
+                     , Bench.Attoparsec
   build-depends:       base ^>=4.13.0.0
                      , one
                      , two
+                     , attoparsec
                      , criterion
                      , deepseq >=1.4
                      , parsers
