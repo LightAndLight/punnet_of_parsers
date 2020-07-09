@@ -1,7 +1,7 @@
 {-# language DeriveGeneric #-}
 {-# language OverloadedStrings #-}
 {-# language RankNTypes #-}
-module Bench.Common (commonBenchs, commonWeighs) where
+module Bench.Common (expr, commonBenchs, commonWeighs) where
 
 import Control.Applicative ((<|>), many, some)
 import Control.DeepSeq (NFData)

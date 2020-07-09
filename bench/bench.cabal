@@ -23,6 +23,7 @@ library
                      , Bench.Four
                      , Bench.Five
                      , Bench.Attoparsec
+                     , Bench.Sage
   build-depends:       base ^>=4.13.0.0
                      , one
                      , two
@@ -33,6 +34,7 @@ library
                      , criterion
                      , deepseq >=1.4
                      , parsers
+                     , sage
                      , text >=1.2
                      , weigh
   hs-source-dirs:      src
@@ -51,6 +53,7 @@ benchmark time
                      , attoparsec
                      , criterion
                      , deepseq >=1.4
+                     , sage
                      , parsers
                      , text >=1.2
   hs-source-dirs:      time
@@ -69,6 +72,7 @@ benchmark memory
                      , attoparsec
                      , deepseq >=1.4
                      , parsers
+                     , sage
                      , text >=1.2
                      , weigh
   hs-source-dirs:      memory

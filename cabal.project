@@ -6,3 +6,7 @@ packages:
   ./five
   ./bench
   ./test
+
+source-repository-package
+  type: git
+  location: git@github.com:LightAndLight/sage.git
