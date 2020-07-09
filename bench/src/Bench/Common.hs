@@ -7,7 +7,7 @@ import Control.Applicative ((<|>), many, some)
 import Control.DeepSeq (NFData)
 import Criterion.Main (Benchmark, bench, bgroup, nf)
 import Data.Char (isLower)
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import Text.Parser.Char (CharParsing, char, satisfy, string)
 import Text.Parser.Combinators (skipMany)
@@ -42,6 +42,9 @@ commonBenchs ::
 commonBenchs parse benchName =
   bgroup benchName
   [ bgroup "expr"
-    [ bench "\"\\x -> \\y -> x (\\z -> z y) y\"" $ nf (parse expr) ""
+    [ let
+        input = "\\x -> \\y -> x (\\z -> z y) y"
+      in
+        bench (unpack input) $ nf (parse expr) input
     ]
   ]

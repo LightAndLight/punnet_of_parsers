@@ -1,5 +1,8 @@
 packages:
   ./one
   ./two
+  ./three
+  ./four
+  ./five
   ./bench
   ./test

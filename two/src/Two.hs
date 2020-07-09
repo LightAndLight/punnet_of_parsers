@@ -109,7 +109,7 @@ instance Parsing Parser where
   (<?>) (Parser p) n =
     Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
     let
-      ex' = Set.insert (Name n) ex'
+      ex' = Set.insert (Name n) ex
     in
       p input pos ex
         (\input' pos' _ -> ucFail input' pos' ex')
