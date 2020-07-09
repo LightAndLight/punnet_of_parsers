@@ -64,6 +64,6 @@ commonWeighs parse weighName =
     func' (unpack input) parse input
   where
     inputs =
-      [ "\\x -> \\y -> x (\\z -> z y) y"
+      [ "\\x -> \\y -> x (\\z ->    z  y) y"
       , "\\x -> \\y -> x (\\z -> z y) y (\\x -> (\\y -> ((x y) z) (\\w -> x y w)))"
       ]
