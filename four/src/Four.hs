@@ -91,16 +91,8 @@ instance Alternative Parser where
       case ra of
         (# (# #) | #) ->
           if aConsumed
-          then (# aConsumed, input', pos', ex', (# (# #) | #) #)
-          else
-            let
-              !(# bConsumed, input'', pos'', ex'', rb #) = pb (# input, pos, ex' #)
-            in
-              case rb of
-                (# (# #) | #) ->
-                  (# bConsumed, input'', pos'', ex'', (# (# #) | #) #)
-                (# | _ #) ->
-                  (# bConsumed, input'', pos'', ex'', rb #)
+          then (# aConsumed, input', pos', ex', ra #)
+          else pb (# input, pos, ex' #)
         (# | _ #) ->
           (# aConsumed, input', pos', ex', ra #)
 

@@ -85,16 +85,8 @@ instance Alternative Parser where
       case ra of
         Nothing ->
           if aConsumed
-          then (aConsumed, input', pos', ex', Nothing)
-          else
-            let
-              (bConsumed, input'', pos'', ex'', rb) = pb input pos ex'
-            in
-              case rb of
-                Nothing ->
-                  (bConsumed, input'', pos'', ex'', Nothing)
-                Just{} ->
-                  (bConsumed, input'', pos'', ex'', rb)
+          then (aConsumed, input', pos', ex', ra)
+          else pb input pos ex'
         Just{} ->
           (aConsumed, input', pos', ex', ra)
 

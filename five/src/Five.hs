@@ -76,11 +76,16 @@ instance Applicative Parser where
             let
               !(# aConsumed, input'', pos'', ex'', ra #) = pa (# input', pos', ex' #)
             in
-              case ra of
-                (# (# #) | #) ->
-                  (# orI# fConsumed aConsumed, input'', pos'', ex'', (# (# #) | #) #)
-                (# | a #) ->
-                  (# orI# fConsumed aConsumed, input'', pos'', ex'', (# | f a #) #)
+              (# orI# fConsumed aConsumed
+              , input''
+              , pos''
+              , ex''
+              , case ra of
+                  (# (# #) | #) ->
+                    (# (# #) | #)
+                  (# | a #) ->
+                    (# | f a #)
+              #)
 
 instance Alternative Parser where
   empty = Parser $ \(# input, pos, ex #) -> (# 0#, input, pos, ex, (# (# #) | #) #)
@@ -92,16 +97,8 @@ instance Alternative Parser where
       case ra of
         (# (# #) | #) ->
           case aConsumed of
-            1# -> (# aConsumed, input', pos', ex', (# (# #) | #) #)
-            _ ->
-              let
-                !(# bConsumed, input'', pos'', ex'', rb #) = pb (# input, pos, ex' #)
-              in
-                case rb of
-                  (# (# #) | #) ->
-                    (# bConsumed, input'', pos'', ex'', (# (# #) | #) #)
-                  (# | _ #) ->
-                    (# bConsumed, input'', pos'', ex'', rb #)
+            1# -> (# aConsumed, input', pos', ex', ra #)
+            _ -> pb (# input, pos, ex' #)
         (# | _ #) ->
           (# aConsumed, input', pos', ex', ra #)
 
