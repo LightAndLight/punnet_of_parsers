@@ -1,9 +1,5 @@
 packages:
-  ./one
-  ./two
-  ./three
-  ./four
-  ./five
+  ./punnet
   ./bench
   ./test
 

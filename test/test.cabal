@@ -25,11 +25,7 @@ test-suite test
                      , Test.Four
                      , Test.Five
   build-depends:       base ^>=4.13.0.0
-                     , one
-                     , two
-                     , three
-                     , four
-                     , five
+                     , punnet
                      , containers >=0.6
                      , hspec
                      , parsers

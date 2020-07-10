@@ -25,11 +25,7 @@ library
                      , Bench.Attoparsec
                      , Bench.Sage
   build-depends:       base ^>=4.13.0.0
-                     , one
-                     , two
-                     , three
-                     , four
-                     , five
+                     , punnet
                      , attoparsec
                      , criterion
                      , deepseq >=1.4
@@ -45,11 +41,6 @@ benchmark time
   main-is:             Main.hs
   build-depends:       base ^>=4.13.0.0
                      , bench
-                     , one
-                     , two
-                     , three
-                     , four
-                     , five
                      , attoparsec
                      , criterion
                      , deepseq >=1.4
@@ -64,11 +55,6 @@ benchmark memory
   main-is:             Main.hs
   build-depends:       base ^>=4.13.0.0
                      , bench
-                     , one
-                     , two
-                     , three
-                     , four
-                     , five
                      , attoparsec
                      , deepseq >=1.4
                      , parsers
