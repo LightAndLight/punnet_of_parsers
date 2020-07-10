@@ -101,17 +101,23 @@ instance Alternative Parser where
 
   {-# inline many #-}
   many (Parser p) =
-    Parser (go id)
+    Parser (go 0# id)
     where
-      go acc state =
+      go consumed acc state =
         case p state of
-          (# consumed, input', pos', ex', ra #) ->
+          (# consumed', input', pos', ex', ra #) ->
+            let consumed'' = orI# consumed consumed' in
             case ra of
               (# (# #) | #) ->
-                case consumed of
-                  1# -> (# consumed, input', pos', ex', (# (# #) | #) #)
-                  _ -> (# consumed, input', pos', ex', (# | acc [] #) #)
-              (# | a #) -> go (acc . (a :)) (# input', pos', ex' #)
+                (# consumed''
+                , input'
+                , pos'
+                , ex'
+                , case consumed' of
+                    1# -> (# (# #) | #)
+                    _ -> (# | acc [] #)
+                #)
+              (# | a #) -> go consumed'' (acc . (a :)) (# input', pos', ex' #)
 
   some (Parser p) =
     Parser $ \state ->
@@ -119,17 +125,23 @@ instance Alternative Parser where
       (# consumed, input', pos', ex', ra #) ->
         case ra of
           (# (# #) | #) -> (# consumed, input', pos', ex', (# (# #) | #) #)
-          (# | a #) -> go (a :) (# input', pos', ex' #)
+          (# | a #) -> go consumed (a :) (# input', pos', ex' #)
     where
-      go acc state =
+      go consumed acc state =
         case p state of
-          (# consumed, input', pos', ex', ra #) ->
+          (# consumed', input', pos', ex', ra #) ->
+            let consumed'' = orI# consumed consumed' in
             case ra of
               (# (# #) | #) ->
-                case consumed of
-                  1# -> (# consumed, input', pos', ex', (# (# #) | #) #)
-                  _ -> (# consumed, input', pos', ex', (# | acc [] #) #)
-              (# | a #) -> go (acc . (a :)) (# input', pos', ex' #)
+                (# consumed''
+                , input'
+                , pos'
+                , ex'
+                , case consumed' of
+                    1# -> (# (# #) | #)
+                    _ -> (# | acc [] #)
+                #)
+              (# | a #) -> go consumed'' (acc . (a :)) (# input', pos', ex' #)
 
 instance Parsing Parser where
   try (Parser p) =
@@ -137,28 +149,56 @@ instance Parsing Parser where
     case p (# input, pos, ex #) of
       (# _, input', pos', ex', res #) ->
         (# 0#, input', pos', ex', res #)
+
   (<?>) (Parser p) n =
     Parser $ \(# input, pos, ex #) ->
     case p (# input, pos, ex #) of
       (# consumed, input', pos', _, res #) ->
         (# consumed, input', pos', Set.insert (Name n) ex, res #)
+
   skipMany (Parser p) =
-    Parser go
+    Parser (go 0#)
     where
-      go state =
+      go consumed state =
         case p state of
-          (# consumed, input', pos', ex', res #) ->
+          (# consumed', input', pos', ex', res #) ->
+            let consumed'' = orI# consumed consumed' in
             case res of
               (# (# #) | #) ->
-                (# consumed
+                (# consumed''
                 , input'
                 , pos'
                 , ex'
-                , case consumed of
+                , case consumed' of
                     1# -> (# (# #) | #)
                     _ -> (# | () #)
                 #)
-              (# | _ #) -> go (# input', pos', ex' #)
+              (# | _ #) -> go consumed'' (# input', pos', ex' #)
+
+  skipSome (Parser p) =
+    Parser $ \state ->
+    case p state of
+      (# consumed, input', pos', ex', res #) ->
+        case res of
+          (# (# #) | #) -> (# consumed, input', pos', ex', (# (# #) | #) #)
+          (# | _ #) -> go consumed (# input', pos', ex' #)
+    where
+      go consumed state =
+        case p state of
+          (# consumed', input', pos', ex', res #) ->
+            let consumed'' = orI# consumed consumed' in
+            case res of
+              (# (# #) | #) ->
+                (# consumed''
+                , input'
+                , pos'
+                , ex'
+                , case consumed' of
+                    1# -> (# (# #) | #)
+                    _ -> (# | () #)
+                #)
+              (# | _ #) -> go consumed'' (# input', pos', ex' #)
+
   notFollowedBy (Parser p) =
     Parser $ \(# input, pos, ex #) ->
     case p (# input, pos, ex #) of
@@ -166,7 +206,9 @@ instance Parsing Parser where
         case res of
           (# (# #) | #) -> (# 0#, input, pos, ex, (# | () #) #)
           (# | _ #) -> (# 0#, input, pos, ex, (# (# #) | #) #)
+
   unexpected _ = empty
+
   eof =
     Parser $ \(# input, pos, ex #) ->
     if Text.null input
