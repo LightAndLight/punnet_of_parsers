@@ -22,16 +22,19 @@ library
                      , Bench.Three
                      , Bench.Four
                      , Bench.Five
+                     , Bench.Infinity
                      , Bench.Attoparsec
                      , Bench.Sage
   build-depends:       base ^>=4.13.0.0
                      , punnet
                      , attoparsec
+                     , containers >=0.6
                      , criterion
                      , deepseq >=1.4
                      , parsers
                      , sage
                      , text >=1.2
+                     , vector
                      , weigh
   hs-source-dirs:      src
   default-language:    Haskell2010

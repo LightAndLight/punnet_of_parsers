@@ -7,6 +7,7 @@ import Test.Two (twoTests)
 import Test.Three (threeTests)
 import Test.Four (fourTests)
 import Test.Five (fiveTests)
+import Test.Infinity (infinityTests)
 
 main :: IO ()
 main =
@@ -15,4 +16,4 @@ main =
     twoTests
     threeTests
     fourTests
-    fiveTests
+    infinityTests

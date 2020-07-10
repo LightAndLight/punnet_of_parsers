@@ -5,16 +5,19 @@ import Criterion.Main (Benchmark)
 import Data.Attoparsec.Text (Parser, parseOnly)
 import Weigh (Weigh)
 
-import Bench.Common (Expr, commonBenchs, commonWeighs)
+import Bench.Common (commonBenchs, commonWeighs)
 import qualified Bench.Common as Common
 
-expr :: Parser Expr
+expr :: Parser Common.Expr
 expr = Common.expr
+
+json :: Parser Common.Json
+json = Common.json
 
 attoparsecBenchs :: Benchmark
 attoparsecBenchs =
-  commonBenchs (parseOnly expr) "attoparsec"
+  commonBenchs (parseOnly expr) (parseOnly json) "attoparsec"
 
 attoparsecWeighs :: Weigh ()
 attoparsecWeighs =
-  commonWeighs (parseOnly expr) "attoparsec"
+  commonWeighs (parseOnly expr) (parseOnly json) "attoparsec"

@@ -119,18 +119,6 @@ instance Parsing Parser where
         (\a input' pos' _ -> ucSuccess a input' pos' ex')
         (\input' pos' _ -> cFail input' pos' ex')
         (\a input' pos' _ -> cSuccess a input' pos' ex')
-  skipMany (Parser p) =
-    Parser go
-    where
-      go input pos ex ucFail ucSuccess cFail cSuccess =
-        let
-          success _ input' pos' ex' = go input' pos' ex' ucFail ucSuccess cFail cSuccess
-        in
-        p input pos ex
-          (ucSuccess ())
-          success
-          cFail
-          success
   notFollowedBy (Parser p) =
     Parser $ \input pos ex ucFail ucSuccess _ _ ->
     let

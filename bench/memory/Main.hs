@@ -7,6 +7,7 @@ import Bench.Two (twoWeighs)
 import Bench.Three (threeWeighs)
 import Bench.Four (fourWeighs)
 import Bench.Five (fiveWeighs)
+import Bench.Infinity (infinityWeighs)
 import Bench.Attoparsec (attoparsecWeighs)
 import Bench.Sage (sageWeighs)
 
@@ -18,5 +19,6 @@ main =
     threeWeighs
     fourWeighs
     fiveWeighs
+    infinityWeighs
     attoparsecWeighs
     sageWeighs

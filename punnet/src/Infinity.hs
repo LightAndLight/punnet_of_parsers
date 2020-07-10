@@ -2,7 +2,7 @@
 {-# language DeriveGeneric #-}
 {-# language UnboxedTuples, UnboxedSums #-}
 {-# language MagicHash #-}
-module Five where
+module Infinity where
 
 import Control.Applicative (Alternative(..))
 import Control.DeepSeq (NFData)
@@ -99,6 +99,38 @@ instance Alternative Parser where
           (# | _ #) ->
             (# aConsumed, input', pos', ex', ra #)
 
+  {-# inline many #-}
+  many (Parser p) =
+    Parser (go id)
+    where
+      go acc state =
+        case p state of
+          (# consumed, input', pos', ex', ra #) ->
+            case ra of
+              (# (# #) | #) ->
+                case consumed of
+                  1# -> (# consumed, input', pos', ex', (# (# #) | #) #)
+                  _ -> (# consumed, input', pos', ex', (# | acc [] #) #)
+              (# | a #) -> go (acc . (a :)) (# input', pos', ex' #)
+
+  some (Parser p) =
+    Parser $ \state ->
+    case p state of
+      (# consumed, input', pos', ex', ra #) ->
+        case ra of
+          (# (# #) | #) -> (# consumed, input', pos', ex', (# (# #) | #) #)
+          (# | a #) -> go (a :) (# input', pos', ex' #)
+    where
+      go acc state =
+        case p state of
+          (# consumed, input', pos', ex', ra #) ->
+            case ra of
+              (# (# #) | #) ->
+                case consumed of
+                  1# -> (# consumed, input', pos', ex', (# (# #) | #) #)
+                  _ -> (# consumed, input', pos', ex', (# | acc [] #) #)
+              (# | a #) -> go (acc . (a :)) (# input', pos', ex' #)
+
 instance Parsing Parser where
   try (Parser p) =
     Parser $ \(# input, pos, ex #) ->
@@ -110,6 +142,23 @@ instance Parsing Parser where
     case p (# input, pos, ex #) of
       (# consumed, input', pos', _, res #) ->
         (# consumed, input', pos', Set.insert (Name n) ex, res #)
+  skipMany (Parser p) =
+    Parser go
+    where
+      go state =
+        case p state of
+          (# consumed, input', pos', ex', res #) ->
+            case res of
+              (# (# #) | #) ->
+                (# consumed
+                , input'
+                , pos'
+                , ex'
+                , case consumed of
+                    1# -> (# (# #) | #)
+                    _ -> (# | () #)
+                #)
+              (# | _ #) -> go (# input', pos', ex' #)
   notFollowedBy (Parser p) =
     Parser $ \(# input, pos, ex #) ->
     case p (# input, pos, ex #) of
