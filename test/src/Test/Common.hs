@@ -9,7 +9,7 @@ import Data.Set (Set)
 import Data.Text (Text)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 
-import Text.Parser.Char (CharParsing, char, satisfy, string)
+import Text.Parser.Char (CharParsing, anyChar, char, satisfy, string)
 import Text.Parser.Combinators (eof, notFollowedBy, skipMany, try)
 
 data Expr = Var String | Lam String Expr | App Expr Expr
@@ -177,12 +177,33 @@ commonTests parse unexpected specName =
         actual = parse p input
         expected = Left $ unexpected 0 [Eof]
       actual `shouldBe` expected
+    it "parse (many anyChar) \"\"" $ do
+      let
+        p = many anyChar
+        input = ""
+        actual = parse p input
+        expected = Right []
+      actual `shouldBe` expected
+    it "parse (many anyChar) \"abc\"" $ do
+      let
+        p = many anyChar
+        input = "abc"
+        actual = parse p input
+        expected = Right ['a', 'b', 'c']
+      actual `shouldBe` expected
     it "parse (many $ char 'a') \"aaa\"" $ do
       let
         p = many $ char 'a'
         input = "aaa"
         actual = parse p input
         expected = Right ['a', 'a', 'a']
+      actual `shouldBe` expected
+    it "parse (some anyChar) \"abc\"" $ do
+      let
+        p = some anyChar
+        input = "abc"
+        actual = parse p input
+        expected = Right ['a', 'b', 'c']
       actual `shouldBe` expected
     it "parse (some $ char 'a') \"aaa\"" $ do
       let

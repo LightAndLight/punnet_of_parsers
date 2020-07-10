@@ -86,6 +86,7 @@ instance Applicative Parser where
 
 instance Alternative Parser where
   empty = Parser $ \(# input, pos, ex #) -> (# 0#, input, pos, ex, (# (# #) | #) #)
+
   Parser pa <|> Parser pb =
     Parser $ \(# input, pos, ex #) ->
     case pa (# input, pos, ex #) of
@@ -97,6 +98,38 @@ instance Alternative Parser where
               _ -> pb (# input, pos, ex' #)
           (# | _ #) ->
             (# aConsumed, input', pos', ex', ra #)
+
+  {-# inline many #-}
+  many (Parser p) =
+    Parser (go id)
+    where
+      go acc state =
+        case p state of
+          (# consumed, input', pos', ex', ra #) ->
+            case ra of
+              (# (# #) | #) ->
+                case consumed of
+                  1# -> (# consumed, input', pos', ex', (# (# #) | #) #)
+                  _ -> (# consumed, input', pos', ex', (# | acc [] #) #)
+              (# | a #) -> go (acc . (a :)) (# input', pos', ex' #)
+
+  some (Parser p) =
+    Parser $ \state ->
+    case p state of
+      (# consumed, input', pos', ex', ra #) ->
+        case ra of
+          (# (# #) | #) -> (# consumed, input', pos', ex', (# (# #) | #) #)
+          (# | a #) -> go (a :) (# input', pos', ex' #)
+    where
+      go acc state =
+        case p state of
+          (# consumed, input', pos', ex', ra #) ->
+            case ra of
+              (# (# #) | #) ->
+                case consumed of
+                  1# -> (# consumed, input', pos', ex', (# (# #) | #) #)
+                  _ -> (# consumed, input', pos', ex', (# | acc [] #) #)
+              (# | a #) -> go (acc . (a :)) (# input', pos', ex' #)
 
 instance Parsing Parser where
   try (Parser p) =
@@ -149,6 +182,7 @@ instance CharParsing Parser where
         (# 1#, input', pos', mempty, (# | c #) #)
       _ ->
         (# 0#, input, pos, ex, (# (# #) | #) #)
+
   char c =
     Parser $ \(# input, pos, ex #) ->
     case Text.uncons input of
