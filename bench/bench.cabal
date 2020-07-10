@@ -38,6 +38,7 @@ library
                      , weigh
   hs-source-dirs:      src
   default-language:    Haskell2010
+  ghc-options:         -Wall -Werror
 
 benchmark time
   type:                exitcode-stdio-1.0
@@ -52,6 +53,7 @@ benchmark time
                      , text >=1.2
   hs-source-dirs:      time
   default-language:    Haskell2010
+  ghc-options:         -Wall -Werror
 
 benchmark memory
   type:                exitcode-stdio-1.0
@@ -66,3 +68,4 @@ benchmark memory
                      , weigh
   hs-source-dirs:      memory
   default-language:    Haskell2010
+  ghc-options:         -Wall -Werror

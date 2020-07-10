@@ -1,11 +1,9 @@
 {-# language OverloadedStrings #-}
 module Bench.Sage (sageBenchs, sageWeighs) where
 
-import Criterion.Main (Benchmark, bench, bgroup, nf)
-import Data.Foldable (for_)
-import Data.Text (unpack)
+import Criterion.Main (Benchmark)
 import Text.Sage (Parser, parse)
-import Weigh (Weigh, func', wgroup)
+import Weigh (Weigh)
 
 import Bench.Common (commonBenchs, commonWeighs)
 import qualified Bench.Common as Common

@@ -14,7 +14,6 @@ import Data.Text (Text, unpack)
 import qualified Data.Text as Text
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
-import GHC.Err (errorWithoutStackTrace)
 import GHC.Generics (Generic)
 import Text.Parser.Char (CharParsing, char, satisfy, string, text)
 import Text.Parser.Combinators ((<?>), between, sepBy, skipMany)
@@ -58,7 +57,7 @@ json :: CharParsing m => m Json
 json =
   object <|>
   array <|>
-  string <|>
+  jstring <|>
   number <|>
   bool <|>
   jnull
@@ -76,7 +75,7 @@ json =
     array =
       JArray . Vector.fromList <$>
       between (char '[' *> spaces) (char ']' *> spaces) (json `sepBy` (char ',' *> spaces))
-    string =
+    jstring =
       fmap JString . between (char '"') (char '"' *> spaces) $
       Text.pack <$>
       many
@@ -119,7 +118,7 @@ commonBenchs parseExpr parseJson benchName =
     [ let
         input = "{\"anumber\": 123, \"abool\": true, \"anull\": null, \"anarray\": [1, false, null, {}]}"
       in
-        bench (unpack input) $ nf (\i -> case parseJson i of Right x -> x; Left err -> error $ show err) input
+        bench (unpack input) $ nf parseJson input
     ]
   ]
 

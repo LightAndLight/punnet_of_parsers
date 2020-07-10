@@ -7,7 +7,7 @@ import Control.Applicative ((<|>), many, some)
 import Data.Char (isLower)
 import Data.Set (Set)
 import Data.Text (Text)
-import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, it, shouldBe)
 
 import Text.Parser.Char (CharParsing, anyChar, char, satisfy, string)
 import Text.Parser.Combinators (eof, notFollowedBy, skipMany, try)

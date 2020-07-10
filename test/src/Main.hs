@@ -16,4 +16,5 @@ main =
     twoTests
     threeTests
     fourTests
+    fiveTests
     infinityTests
