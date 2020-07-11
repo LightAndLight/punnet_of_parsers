@@ -6,8 +6,6 @@ import Bench.One (oneBenchs)
 import Bench.Two (twoBenchs)
 import Bench.Three (threeBenchs)
 import Bench.Four (fourBenchs)
-import Bench.Five (fiveBenchs)
-import Bench.Infinity (infinityBenchs)
 import Bench.Attoparsec (attoparsecBenchs)
 import Bench.Sage (sageBenchs)
 
@@ -18,8 +16,6 @@ main =
   , twoBenchs
   , threeBenchs
   , fourBenchs
-  , fiveBenchs
-  , infinityBenchs
   , attoparsecBenchs
   , sageBenchs
   ]

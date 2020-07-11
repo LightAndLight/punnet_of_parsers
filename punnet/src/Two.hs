@@ -1,7 +1,6 @@
-{-# language BangPatterns #-}
 {-# language DeriveGeneric #-}
 {-# language GeneralizedNewtypeDeriving #-}
-{-# language RankNTypes #-}
+{-# language MagicHash, UnboxedTuples, UnboxedSums, PatternSynonyms #-}
 module Two where
 
 import Control.Applicative (Alternative(..))
@@ -31,126 +30,115 @@ instance NFData ParseError
 newtype Pos = Pos { unPos :: Int }
   deriving Num
 
+type Maybe# a = (# (# #) | a #)
+
+pattern Nothing# :: Maybe# a
+pattern Nothing# = (# (# #) | #)
+
+pattern Just# :: a -> Maybe# a
+pattern Just# a = (# | a #)
+
+{-# complete Nothing#, Just# #-}
+
+fmap# :: (a -> b) -> Maybe# a -> Maybe# b
+fmap# f m =
+  case m of
+    Nothing# -> Nothing#
+    Just# a -> Just# (f a)
+
 newtype Parser a
   = Parser
   { unParser ::
-      forall r.
       Text ->
       Pos ->
       Set Label ->
-      (Text -> Pos -> Set Label -> r) -> -- uncommitted failure
-      (a -> Text -> Pos -> Set Label -> r) -> -- uncommitted success
-      (Text -> Pos -> Set Label -> r) -> -- committed failure
-      (a -> Text -> Pos -> Set Label -> r) -> -- committed success
-      r
+      (# Bool, Text, Pos, Set Label, Maybe# a #)
   }
 
 parse :: Parser a -> Text -> Either ParseError a
 parse (Parser p) input =
-  p input 0 mempty failure success failure success
-  where
-    failure _ (Pos pos) ex = Left $ Unexpected pos ex
-    success a _ _ _ = Right a
+  case p input 0 mempty of
+    (# _, _, Pos pos, ex, res #) ->
+      case res of
+        Nothing# -> Left $ Unexpected pos ex
+        Just# a -> Right a
 
 instance Functor Parser where
   fmap f (Parser p) =
-    Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
-    p input pos ex
-      ucFail
-      (ucSuccess . f)
-      cFail
-      (cSuccess . f)
+    Parser $ \input pos ex ->
+    case p input pos ex of
+      (# consumed, input', pos', ex', a #) ->
+        (# consumed, input', pos', ex', fmap# f a #)
 
 instance Applicative Parser where
-  pure a = Parser $ \input pos ex _ ucSuccess _ _ -> ucSuccess a input pos ex
+  pure a = Parser $ \input pos ex -> (# False, input, pos, ex, Just# a #)
   Parser pf <*> Parser pa =
-    Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
-    pf input pos ex
-      ucFail
-      (\f input' pos' ex' ->
-         pa input' pos' ex'
-           ucFail
-           (ucSuccess . f)
-           cFail
-           (cSuccess . f)
-      )
-      cFail
-      (\f input' pos' ex' ->
-         let cSuccess' = cSuccess . f in
-         pa input' pos' ex'
-           cFail
-           cSuccess'
-           cFail
-           cSuccess'
-      )
+    Parser $ \input pos ex ->
+      case pf input pos ex of
+        (# fConsumed, input', pos', ex', rf #) ->
+          case rf of
+            Nothing# ->
+              (# fConsumed, input', pos', ex', Nothing# #)
+            Just# f ->
+              case pa input' pos' ex' of
+                (# aConsumed, input'', pos'', ex'', ra #) ->
+                  case ra of
+                    Nothing# ->
+                      (# fConsumed || aConsumed, input'', pos'', ex'', Nothing# #)
+                    Just# a ->
+                      (# fConsumed || aConsumed, input'', pos'', ex'', Just# (f a) #)
 
 instance Alternative Parser where
-  empty = Parser $ \input pos ex ucFail _ _ _ -> ucFail input pos ex
+  empty = Parser $ \input pos ex -> (# False, input, pos, ex, Nothing# #)
   Parser pa <|> Parser pb =
-    Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
-    pa input pos ex
-      (\input' pos' ex' ->
-         pb input' pos' ex'
-           ucFail
-           ucSuccess
-           cFail
-           cSuccess
-      )
-      ucSuccess
-      cFail
-      cSuccess
+    Parser $ \input pos ex ->
+    case pa input pos ex of
+      (# aConsumed, input', pos', ex', ra #) ->
+        case ra of
+          Nothing# ->
+            if aConsumed
+            then (# aConsumed, input', pos', ex', ra #)
+            else pb input pos ex'
+          Just#{} ->
+            (# aConsumed, input', pos', ex', ra #)
 
 instance Parsing Parser where
   try (Parser p) =
-    Parser $ \input pos ex ucFail ucSuccess _ cSuccess ->
-    let ucFail' _ _ _ = ucFail input pos ex in
-    p input pos ex
-      ucFail'
-      ucSuccess
-      ucFail'
-      cSuccess
+    Parser $ \input pos ex ->
+    case p input pos ex of
+      (# _, input', pos', ex', res #) ->
+        (# False, input', pos', ex', res #)
   (<?>) (Parser p) n =
-    Parser $ \input pos ex ucFail ucSuccess cFail cSuccess ->
-    let
-      ex' = Set.insert (Name n) ex
-    in
-      p input pos ex
-        (\input' pos' _ -> ucFail input' pos' ex')
-        (\a input' pos' _ -> ucSuccess a input' pos' ex')
-        (\input' pos' _ -> cFail input' pos' ex')
-        (\a input' pos' _ -> cSuccess a input' pos' ex')
+    Parser $ \input pos ex ->
+    case p input pos ex of
+      (# consumed, input', pos', _, res #) ->
+        (# consumed, input', pos', Set.insert (Name n) ex, res #)
   notFollowedBy (Parser p) =
-    Parser $ \input pos ex ucFail ucSuccess _ _ ->
-    let
-      ucSuccess' _ _ _ = ucSuccess () input pos ex
-      ucFail' _ _ _ _ = ucFail input pos ex
-    in
-      p input pos ex
-        ucSuccess'
-        ucFail'
-        ucSuccess'
-        ucFail'
+    Parser $ \input pos ex ->
+    case p input pos ex of
+      (# _, _, _, _, res #) ->
+        case res of
+          Nothing# -> (# False, input, pos, ex, Just# () #)
+          Just#{} -> (# False, input, pos, ex, Nothing# #)
   unexpected _ = empty
   eof =
-    Parser $ \input pos ex ucFail ucSuccess _ _ ->
+    Parser $ \input pos ex ->
     if Text.null input
-    then ucSuccess () input pos ex
-    else ucFail input pos (Set.insert Eof ex)
+    then (# False, input, pos, ex, Just# () #)
+    else (# False, input, pos, Set.insert Eof ex, Nothing# #)
 
 instance CharParsing Parser where
   satisfy f =
-    Parser $ \input pos ex ucFail _ _ cSuccess ->
+    Parser $ \input pos ex ->
     case Text.uncons input of
       Just (c, input') | f c ->
-        let !pos' = pos + 1 in
-        cSuccess c input' pos' mempty
+        (# True, input', pos + 1, mempty, Just# c #)
       _ ->
-        ucFail input pos ex
+        (# False, input, pos, ex, Nothing# #)
   char c =
-    Parser $ \input pos ex ucFail _ _ cSuccess ->
+    Parser $ \input pos ex ->
     case Text.uncons input of
       Just (c', input') | c == c' ->
-        let !pos' = pos + 1 in
-        cSuccess c input' pos' mempty
+        (# True, input', pos + 1, mempty, Just# c #)
       _ ->
-        ucFail input pos (Set.insert (Char c) ex)
+        (# False, input, pos, Set.insert (Char c) ex, Nothing# #)

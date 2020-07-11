@@ -1,4 +1,4 @@
-module Bench.Four (fourBenchs, fourWeighs) where
+module Bench.Four (fourBenchs, fourWeighs, expr) where
 
 import Criterion.Main (Benchmark)
 import Weigh (Weigh)

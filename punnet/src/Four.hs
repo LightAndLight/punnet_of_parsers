@@ -1,6 +1,6 @@
 {-# language DeriveGeneric #-}
 {-# language GeneralizedNewtypeDeriving #-}
-{-# language BangPatterns, UnboxedTuples, UnboxedSums #-}
+{-# language MagicHash, UnboxedTuples, UnboxedSums, PatternSynonyms #-}
 module Four where
 
 import Control.Applicative (Alternative(..))
@@ -9,6 +9,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
+import GHC.Exts (Int(I#), Int#, orI#, (+#))
 import GHC.Generics (Generic)
 import Text.Parser.Combinators (Parsing(..))
 import Text.Parser.Char (CharParsing(..))
@@ -27,117 +28,123 @@ data ParseError
   } deriving (Eq, Show, Generic)
 instance NFData ParseError
 
-newtype Pos = Pos { unPos :: Int }
-  deriving Num
+type Pos# = Int#
+
+type Maybe# a = (# (# #) | a #)
+
+pattern Nothing# :: Maybe# a
+pattern Nothing# = (# (# #) | #)
+
+pattern Just# :: a -> Maybe# a
+pattern Just# a = (# | a #)
+
+{-# complete Nothing#, Just# #-}
+
+fmap# :: (a -> b) -> Maybe# a -> Maybe# b
+fmap# f m =
+  case m of
+    Nothing# -> Nothing#
+    Just# a -> Just# (f a)
+
+type Consumed# = Int#
 
 newtype Parser a
   = Parser
   { unParser ::
-      (# Text, Pos, Set Label #) ->
-      (# Bool, Text, Pos, Set Label, (# (# #) | a #) #)
+      Text ->
+      Pos# ->
+      Set Label ->
+      (# Consumed#, Text, Pos#, Set Label, Maybe# a #)
   }
 
 parse :: Parser a -> Text -> Either ParseError a
 parse (Parser p) input =
-  let
-    !(# _, _, Pos pos, ex, res #) = p (# input, 0, mempty #)
-  in
-    case res of
-      (# (# #) | #) -> Left $ Unexpected pos ex
-      (# | a #) -> Right a
+  case p input 0# mempty of
+    (# _, _, pos, ex, res #) ->
+      case res of
+        Nothing# -> Left $ Unexpected (I# pos) ex
+        Just# a -> Right a
 
 instance Functor Parser where
   fmap f (Parser p) =
-    Parser $ \input ->
-    let
-      !(# consumed, input', pos', ex', ra #) = p input
-    in
-      (# consumed
-      , input'
-      , pos'
-      , ex'
-      , case ra of
-          (# (# #) | #) -> (# (# #) | #)
-          (# | a #) -> (# | f a #)
-      #)
+    Parser $ \input pos ex ->
+    case p input pos ex of
+      (# consumed, input', pos', ex', a #) ->
+        (# consumed, input', pos', ex', fmap# f a #)
 
 instance Applicative Parser where
-  pure a = Parser $ \(# input, pos, ex #) -> (# False, input, pos, ex, (# | a #) #)
+  pure a = Parser $ \input pos ex -> (# 0#, input, pos, ex, Just# a #)
   Parser pf <*> Parser pa =
-    Parser $ \input ->
-      let
-        !(# fConsumed, input', pos', ex', rf #) = pf input
-      in
-        case rf of
-          (# (# #) | #) ->
-            (# fConsumed, input', pos', ex', (# (# #) | #) #)
-          (# | f #) ->
-            let
-              !(# aConsumed, input'', pos'', ex'', ra #) = pa (# input', pos', ex' #)
-            in
-              case ra of
-                (# (# #) | #) ->
-                  (# fConsumed || aConsumed, input'', pos'', ex'', (# (# #) | #) #)
-                (# | a #) ->
-                  (# fConsumed || aConsumed, input'', pos'', ex'', (# | f a #) #)
+    {-# SCC apply #-}
+    Parser $ \input pos ex ->
+      case pf input pos ex of
+        (# fConsumed, input', pos', ex', rf #) ->
+          case rf of
+            Nothing# ->
+              (# fConsumed, input', pos', ex', Nothing# #)
+            Just# f ->
+              case pa input' pos' ex' of
+                (# aConsumed, input'', pos'', ex'', ra #) ->
+                  case ra of
+                    Nothing# ->
+                      (# orI# fConsumed aConsumed, input'', pos'', ex'', Nothing# #)
+                    Just# a ->
+                      (# orI# fConsumed aConsumed, input'', pos'', ex'', Just# (f a) #)
 
 instance Alternative Parser where
-  empty = Parser $ \(# input, pos, ex #) -> (# False, input, pos, ex, (# (# #) | #) #)
+  empty = Parser $ \input pos ex -> (# 0#, input, pos, ex, Nothing# #)
   Parser pa <|> Parser pb =
-    Parser $ \(# input, pos, ex #) ->
-    let
-      !(# aConsumed, input', pos', ex', ra #) = pa (# input, pos, ex #)
-    in
-      case ra of
-        (# (# #) | #) ->
-          if aConsumed
-          then (# aConsumed, input', pos', ex', ra #)
-          else pb (# input, pos, ex' #)
-        (# | _ #) ->
-          (# aConsumed, input', pos', ex', ra #)
+    {-# SCC alt #-}
+    Parser $ \input pos ex ->
+    case pa input pos ex of
+      (# aConsumed, input', pos', ex', ra #) ->
+        case ra of
+          Nothing# ->
+            case aConsumed of
+              1# -> (# aConsumed, input', pos', ex', ra #)
+              _ -> pb input pos ex'
+          Just#{} ->
+            (# aConsumed, input', pos', ex', ra #)
 
 instance Parsing Parser where
   try (Parser p) =
-    Parser $ \(# input, pos, ex #) ->
-    let
-      !(# _, input', pos', ex', res #) = p (# input, pos, ex #)
-    in
-      (# False, input', pos', ex', res #)
+    Parser $ \input pos ex ->
+    case p input pos ex of
+      (# _, input', pos', ex', res #) ->
+        (# 0#, input', pos', ex', res #)
   (<?>) (Parser p) n =
-    Parser $ \(# input, pos, ex #) ->
-    let
-      !(# consumed, input', pos', _, res #) = p (# input, pos, ex #)
-    in
-      (# consumed, input', pos', Set.insert (Name n) ex, res #)
+    Parser $ \input pos ex ->
+    case p input pos ex of
+      (# consumed, input', pos', _, res #) ->
+        (# consumed, input', pos', Set.insert (Name n) ex, res #)
   notFollowedBy (Parser p) =
-    Parser $ \(# input, pos, ex #) ->
-    let
-      !(# _, _, _, _, res #) = p (# input, pos, ex #)
-    in
-      case res of
-        (# (# #) | #) -> (# False, input, pos, ex, (# | () #) #)
-        (# | _ #) -> (# False, input, pos, ex, (# (# #) | #) #)
+    Parser $ \input pos ex ->
+    case p input pos ex of
+      (# _, _, _, _, res #) ->
+        case res of
+          Nothing# -> (# 0#, input, pos, ex, Just# () #)
+          Just#{} -> (# 0#, input, pos, ex, Nothing# #)
   unexpected _ = empty
   eof =
-    Parser $ \(# input, pos, ex #) ->
+    Parser $ \input pos ex ->
     if Text.null input
-    then (# False, input, pos, ex, (# | () #) #)
-    else (# False, input, pos, Set.insert Eof ex, (# (# #) | #) #)
+    then (# 0#, input, pos, ex, Just# () #)
+    else (# 0#, input, pos, Set.insert Eof ex, Nothing# #)
 
 instance CharParsing Parser where
   satisfy f =
-    Parser $ \(# input, pos, ex #) ->
+    {-# SCC satisfy #-}
+    Parser $ \input pos ex ->
     case Text.uncons input of
       Just (c, input') | f c ->
-        let !pos' = pos + 1 in
-        (# True, input', pos', mempty, (# | c #) #)
+        (# 1#, input', pos +# 1#, mempty, Just# c #)
       _ ->
-        (# False, input, pos, ex, (# (# #) | #) #)
+        (# 0#, input, pos, ex, Nothing# #)
   char c =
-    Parser $ \(# input, pos, ex #) ->
+    {-# SCC char #-}
+    Parser $ \input pos ex ->
     case Text.uncons input of
       Just (c', input') | c == c' ->
-        let !pos' = pos + 1 in
-        (# True, input', pos', mempty, (# | c #) #)
+        (# 1#, input', pos +# 1#, mempty, Just# c #)
       _ ->
-        (# False, input, pos, Set.insert (Char c) ex, (# (# #) | #) #)
+        (# 0#, input, pos, Set.insert (Char c) ex, Nothing# #)

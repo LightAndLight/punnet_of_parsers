@@ -23,8 +23,6 @@ test-suite test
                      , Test.Two
                      , Test.Three
                      , Test.Four
-                     , Test.Five
-                     , Test.Infinity
   build-depends:       base ^>=4.13.0.0
                      , punnet
                      , containers >=0.6

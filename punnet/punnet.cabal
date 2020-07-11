@@ -20,8 +20,6 @@ library
                      , Two
                      , Three
                      , Four
-                     , Five
-                     , Infinity
   build-depends:       base ^>=4.13.0.0
                      , containers >=0.6
                      , deepseq >=1.4

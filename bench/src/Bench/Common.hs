@@ -20,7 +20,7 @@ import Text.Parser.Combinators ((<?>), between, sepBy, skipMany)
 import Weigh (Weigh, func', wgroup)
 
 data Expr = Var String | Lam String Expr | App Expr Expr
-  deriving Generic
+  deriving (Show, Generic)
 
 instance NFData Expr
 
