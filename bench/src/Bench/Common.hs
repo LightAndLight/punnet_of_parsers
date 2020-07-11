@@ -1,7 +1,7 @@
 {-# language DeriveGeneric #-}
 {-# language OverloadedStrings #-}
 {-# language RankNTypes #-}
-module Bench.Common (Expr, expr, Json, json, commonBenchs, commonWeighs) where
+module Bench.Common (Expr, expr, Json, json, digits, chars, commonBenchs, commonWeighs) where
 
 import Control.Applicative ((<|>), many, some)
 import Control.DeepSeq (NFData)
@@ -96,13 +96,23 @@ json =
       JFalse <$ text "false" <* spaces
     jnull = JNull <$ text "null" <* spaces
 
+{-# inline digits #-}
+digits :: CharParsing m => m [Char]
+digits = some (satisfy isDigit)
+
+{-# inline chars #-}
+chars :: CharParsing m => m [Char]
+chars = many (char 'a')
+
 commonBenchs ::
   (NFData err, Show err) =>
   (Text -> Either err Expr) ->
   (Text -> Either err Json) ->
+  (Text -> Either err [Char]) ->
+  (Text -> Either err [Char]) ->
   String ->
   Benchmark
-commonBenchs parseExpr parseJson benchName =
+commonBenchs parseExpr parseJson parseDigits parseChars benchName =
   bgroup benchName
   [ bgroup "expr"
     [ let
@@ -119,6 +129,18 @@ commonBenchs parseExpr parseJson benchName =
         input = "{\"anumber\": 123, \"abool\": true, \"anull\": null, \"anarray\": [1, false, null, {}]}"
       in
         bench (unpack input) $ nf parseJson input
+    ]
+  , bgroup "digits"
+    [ let
+        input = "123456789012345678901234567890"
+      in
+        bench (unpack input) $ nf parseDigits input
+    ]
+  , bgroup "chars"
+    [ let
+        input = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      in
+        bench (unpack input) $ nf parseChars input
     ]
   ]
 

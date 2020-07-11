@@ -14,9 +14,15 @@ expr = Common.expr
 json :: Parser Common.Json
 json = Common.json
 
+digits :: Parser [Char]
+digits = Common.digits
+
+chars :: Parser [Char]
+chars = Common.chars
+
 attoparsecBenchs :: Benchmark
 attoparsecBenchs =
-  commonBenchs (parseOnly expr) (parseOnly json) "attoparsec"
+  commonBenchs (parseOnly expr) (parseOnly json) (parseOnly digits) (parseOnly chars) "attoparsec"
 
 attoparsecWeighs :: Weigh ()
 attoparsecWeighs =

@@ -14,9 +14,15 @@ expr = Common.expr
 json :: Parser s Common.Json
 json = Common.json
 
+digits :: Parser s [Char]
+digits = Common.digits
+
+chars :: Parser s [Char]
+chars = Common.chars
+
 sageBenchs :: Benchmark
 sageBenchs =
-  commonBenchs (parse expr) (parse json) "sage"
+  commonBenchs (parse expr) (parse json) (parse digits) (parse chars) "sage"
 
 sageWeighs :: Weigh ()
 sageWeighs =

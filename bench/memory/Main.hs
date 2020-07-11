@@ -6,6 +6,8 @@ import Bench.One (oneWeighs)
 import Bench.Two (twoWeighs)
 import Bench.Three (threeWeighs)
 import Bench.Four (fourWeighs)
+import Bench.Five (fiveWeighs)
+import Bench.Six (sixWeighs)
 import Bench.Attoparsec (attoparsecWeighs)
 import Bench.Sage (sageWeighs)
 
@@ -16,5 +18,7 @@ main =
     twoWeighs
     threeWeighs
     fourWeighs
+    fiveWeighs
+    sixWeighs
     attoparsecWeighs
     sageWeighs
