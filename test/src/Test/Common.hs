@@ -10,7 +10,7 @@ import Data.Text (Text)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 import Text.Parser.Char (CharParsing, anyChar, char, satisfy, string)
-import Text.Parser.Combinators (eof, notFollowedBy, skipMany, try)
+import Text.Parser.Combinators ((<?>), eof, notFollowedBy, skipMany, try)
 
 data Expr = Var String | Lam String Expr | App Expr Expr
   deriving (Eq, Show)
@@ -239,6 +239,20 @@ commonTests parse unexpected specName =
         input = "aaac"
         actual = parse p input
         expected = Left $ unexpected 3 [Char 'a', Char 'b']
+      actual `shouldBe` expected
+    it "parse ((char 'a' *> char 'b') <?> \"ab\") \"bb\"" $ do
+      let
+        p = (char 'a' *> char 'b') <?> "ab"
+        input = "bb"
+        actual = parse p input
+        expected = Left $ unexpected 0 [Name "ab"]
+      actual `shouldBe` expected
+    it "parse ((char 'a' *> char 'b') <?> \"ab\") \"ac\"" $ do
+      let
+        p = (char 'a' *> char 'b') <?> "ab"
+        input = "ac"
+        actual = parse p input
+        expected = Left $ unexpected 1 [Char 'b']
       actual `shouldBe` expected
     it "parse expr \"\\x ->   \\y  -> x     (\\z ->  z  y) y\"" $ do
       let

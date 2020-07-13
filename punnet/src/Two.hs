@@ -115,8 +115,15 @@ instance Parsing Parser where
   (<?>) (Parser p) n =
     Parser $ \input pos ex ->
     case p input pos ex of
-      (# consumed, input', pos', _, res #) ->
-        (# consumed, input', pos', Set.insert (Name n) ex, res #)
+      (# consumed, input', pos', ex', res #) ->
+        (# consumed
+        , input'
+        , pos'
+        , if consumed
+          then ex'
+          else Set.insert (Name n) ex
+        , res
+        #)
   notFollowedBy (Parser p) =
     Parser $ \input pos ex ->
     case p input pos ex of
