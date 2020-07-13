@@ -98,7 +98,7 @@ instance Alternative Parser where
           Nothing# ->
             if aConsumed
             then (# aConsumed, input', pos', ex', ra #)
-            else pb input pos ex'
+            else pb input' pos' ex'
           Just#{} ->
             (# aConsumed, input', pos', ex', ra #)
 
@@ -107,7 +107,11 @@ instance Parsing Parser where
     Parser $ \input pos ex ->
     case p input pos ex of
       (# _, input', pos', ex', res #) ->
-        (# False, input', pos', ex', res #)
+        case res of
+          Nothing# ->
+            (# False, input, pos, ex', res #)
+          Just# _ ->
+            (# False, input', pos', ex', res #)
   (<?>) (Parser p) n =
     Parser $ \input pos ex ->
     case p input pos ex of
