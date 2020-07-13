@@ -23,6 +23,7 @@ library
                      , Bench.Four
                      , Bench.Five
                      , Bench.Six
+                     , Bench.Seven
                      , Bench.Attoparsec
                      , Bench.Sage
   build-depends:       base ^>=4.13.0.0

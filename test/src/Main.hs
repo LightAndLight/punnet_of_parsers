@@ -6,6 +6,7 @@ import Test.One (oneTests)
 import Test.Two (twoTests)
 import Test.Three (threeTests)
 import Test.Four (fourTests)
+import Test.Seven (sevenTests)
 
 main :: IO ()
 main =
@@ -14,3 +15,4 @@ main =
     twoTests
     threeTests
     fourTests
+    sevenTests
